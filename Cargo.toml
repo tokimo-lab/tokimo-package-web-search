@@ -1,0 +1,36 @@
+[package]
+name = "tokimo-web-search"
+version = "0.1.0"
+edition = "2024"
+description = "Multi-engine web search (SearXNG-inspired): fan-out, dedup, rank, readability detail"
+
+[lib]
+name = "tokimo_web_search"
+path = "src/lib.rs"
+
+[dependencies]
+reqwest = { version = "0.13", features = ["json", "cookies", "gzip", "brotli"] }
+scraper = "0.26"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "time", "sync", "process", "io-util"] }
+futures = "0.3"
+async-trait = "0.1"
+url = "2"
+urlencoding = "2"
+percent-encoding = "2"
+regex = "1"
+thiserror = "2"
+tracing = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+html-escape = "0.2"
+rand = "0.8"
+tokimo-web-fetch = { path = "../tokimo-web-fetch" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+tracing-subscriber = "0.3"
+
+[lints]
+workspace = true
