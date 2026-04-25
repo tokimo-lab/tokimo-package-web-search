@@ -26,7 +26,7 @@ chrono = { version = "0.4", features = ["serde"] }
 base64 = "0.22"
 html-escape = "0.2"
 rand = "0.8"
-tokimo-web-fetch = { path = "../tokimo-web-fetch" }
+tokimo-web-fetch = { path = "../tokimo-package-web-fetch" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
