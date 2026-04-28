@@ -43,13 +43,25 @@ impl Engine for Yahoo {
 
         let mut results = Vec::new();
         for item in doc.select(&sel_item) {
-            let link = item.select(&sel_link_a).next().or_else(|| item.select(&sel_link_b).next());
+            let link = item
+                .select(&sel_link_a)
+                .next()
+                .or_else(|| item.select(&sel_link_b).next());
             let Some(a) = link else { continue };
-            let Some(raw_url) = a.value().attr("href") else { continue };
-            let title_raw = a.value().attr("aria-label").map_or_else(|| extract_text(&a), String::from);
+            let Some(raw_url) = a.value().attr("href") else {
+                continue;
+            };
+            let title_raw = a
+                .value()
+                .attr("aria-label")
+                .map_or_else(|| extract_text(&a), String::from);
             let title = html_to_text(&title_raw);
 
-            let content = item.select(&sel_content).next().map(|e| extract_text(&e)).unwrap_or_default();
+            let content = item
+                .select(&sel_content)
+                .next()
+                .map(|e| extract_text(&e))
+                .unwrap_or_default();
             let url_clean = parse_yahoo_url(raw_url);
 
             if title.is_empty() || url_clean.is_empty() {

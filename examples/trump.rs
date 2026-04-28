@@ -11,13 +11,14 @@ use tokimo_web_search::{BrowserFetch, LightpandaBrowser, SearchOptions, Searcher
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    let _ = tracing_subscriber::fmt().with_max_level(tracing::Level::WARN).try_init();
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::WARN)
+        .try_init();
 
     let query = std::env::args().nth(1).unwrap_or_else(|| "特朗普 今天".to_string());
     let out_path = std::env::args().nth(2).unwrap_or_else(|| "demo.txt".to_string());
 
-    let browser = LightpandaBrowser::autodetect()
-        .map(|b| Arc::new(b) as Arc<dyn BrowserFetch>);
+    let browser = LightpandaBrowser::autodetect().map(|b| Arc::new(b) as Arc<dyn BrowserFetch>);
 
     let searcher = Searcher::new_with_browser(&[], browser).expect("build searcher");
 
@@ -31,7 +32,10 @@ async fn main() {
     let list = searcher.search(&query, &opts).await;
 
     println!("[2/2] detail mode — 对前 8 条抓 Readability 正文 …");
-    let detail_opts = SearchOptions { max_results: 8, ..opts.clone() };
+    let detail_opts = SearchOptions {
+        max_results: 8,
+        ..opts.clone()
+    };
     let detailed = searcher.search_with_details(&query, &detail_opts).await;
 
     let mut f = File::create(&out_path).expect("create demo.txt");
@@ -50,7 +54,12 @@ async fn main() {
     }
 
     writeln!(f, "\n================================================================").unwrap();
-    writeln!(f, "模式一：列表（去重后 {} 条，title + url + 描述 + 来源引擎）", list.results.len()).unwrap();
+    writeln!(
+        f,
+        "模式一：列表（去重后 {} 条，title + url + 描述 + 来源引擎）",
+        list.results.len()
+    )
+    .unwrap();
     writeln!(f, "================================================================\n").unwrap();
     for (i, r) in list.results.iter().enumerate() {
         writeln!(f, "[{:2}] score={:.3}  engines={:?}", i + 1, r.score, r.engines).unwrap();
@@ -61,7 +70,12 @@ async fn main() {
     }
 
     writeln!(f, "\n================================================================").unwrap();
-    writeln!(f, "模式二：详情（Readability 降噪后的正文，前 {} 条）", detailed.results.len()).unwrap();
+    writeln!(
+        f,
+        "模式二：详情（Readability 降噪后的正文，前 {} 条）",
+        detailed.results.len()
+    )
+    .unwrap();
     writeln!(f, "================================================================\n").unwrap();
     for (i, d) in detailed.results.iter().enumerate() {
         writeln!(f, "------------------------------------------------------------").unwrap();
@@ -72,8 +86,12 @@ async fn main() {
             continue;
         }
         let Some(det) = &d.detail else { continue };
-        if let Some(s) = &det.site_name { writeln!(f, "     site: {s}").unwrap(); }
-        if let Some(b) = &det.byline { writeln!(f, "     byline: {b}").unwrap(); }
+        if let Some(s) = &det.site_name {
+            writeln!(f, "     site: {s}").unwrap();
+        }
+        if let Some(b) = &det.byline {
+            writeln!(f, "     byline: {b}").unwrap();
+        }
         writeln!(f, "     length: {} chars", det.content_text.chars().count()).unwrap();
         if let Some(ex) = &det.excerpt {
             writeln!(f, "     excerpt: {}", ex.chars().take(200).collect::<String>()).unwrap();

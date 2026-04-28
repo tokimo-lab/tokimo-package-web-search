@@ -28,9 +28,7 @@ impl Engine for Google {
         let start = (ctx.page.saturating_sub(1)) * 10;
         let q = urlencoding::encode(&ctx.query);
         let hl = locale_to_hl(&ctx.locale);
-        let url = format!(
-            "https://www.google.com/search?q={q}&hl={hl}&ie=utf8&oe=utf8&filter=0&start={start}"
-        );
+        let url = format!("https://www.google.com/search?q={q}&hl={hl}&ie=utf8&oe=utf8&filter=0&start={start}");
 
         let resp = ctx
             .client
@@ -45,9 +43,7 @@ impl Engine for Google {
             .send()
             .await?;
 
-        if resp.url().host_str() == Some("sorry.google.com")
-            || resp.url().path().starts_with("/sorry")
-        {
+        if resp.url().host_str() == Some("sorry.google.com") || resp.url().path().starts_with("/sorry") {
             return Err(SearchError::Captcha("google"));
         }
 

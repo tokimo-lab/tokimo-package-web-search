@@ -62,8 +62,8 @@ impl Engine for ChinaSo {
             .send()
             .await?;
         let text = resp.text().await?;
-        let data: Resp = serde_json::from_str(&text)
-            .map_err(|e| SearchError::Engine("chinaso", format!("invalid json: {e}")))?;
+        let data: Resp =
+            serde_json::from_str(&text).map_err(|e| SearchError::Engine("chinaso", format!("invalid json: {e}")))?;
 
         let entries = data.data.and_then(|d| d.data).unwrap_or_default();
         let mut out = Vec::new();

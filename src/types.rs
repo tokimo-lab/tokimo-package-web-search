@@ -28,7 +28,6 @@ impl ResultTemplate {
     }
 }
 
-
 /// 单个引擎返回的原始结果（未去重、未评分）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawResult {

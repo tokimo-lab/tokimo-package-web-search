@@ -59,17 +59,22 @@ impl Engine for Bing {
             let mut real = href.to_string();
             if real.starts_with("https://www.bing.com/ck/a?")
                 && let Ok(parsed) = Url::parse(&real)
-                    && let Some(u) = parsed.query_pairs().find(|(k, _)| k == "u").map(|(_, v)| v.into_owned())
-                        && let Some(enc) = u.strip_prefix("a1") {
-                            let mut pad = enc.to_string();
-                            while pad.len() % 4 != 0 {
-                                pad.push('=');
-                            }
-                            if let Ok(bytes) = base64::engine::general_purpose::URL_SAFE.decode(&pad)
-                                && let Ok(s) = String::from_utf8(bytes) {
-                                    real = s;
-                                }
-                        }
+                && let Some(u) = parsed
+                    .query_pairs()
+                    .find(|(k, _)| k == "u")
+                    .map(|(_, v)| v.into_owned())
+                && let Some(enc) = u.strip_prefix("a1")
+            {
+                let mut pad = enc.to_string();
+                while pad.len() % 4 != 0 {
+                    pad.push('=');
+                }
+                if let Ok(bytes) = base64::engine::general_purpose::URL_SAFE.decode(&pad)
+                    && let Ok(s) = String::from_utf8(bytes)
+                {
+                    real = s;
+                }
+            }
 
             let content = item
                 .select(&sel_content)

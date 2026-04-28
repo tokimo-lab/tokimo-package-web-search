@@ -259,15 +259,17 @@ impl Searcher {
 /// 参考 searxng `MainResult.__hash__`：用 template + URL 关键分量 + img_src 做 key。
 fn dedup_key(r: &RawResult) -> String {
     let parsed = Url::parse(&r.url).ok();
-    let (host, path, query, fragment) = parsed
-        .as_ref().map_or_else(|| (String::new(), r.url.clone(), String::new(), String::new()), |u| {
+    let (host, path, query, fragment) = parsed.as_ref().map_or_else(
+        || (String::new(), r.url.clone(), String::new(), String::new()),
+        |u| {
             (
                 u.host_str().unwrap_or("").to_string(),
                 u.path().to_string(),
                 u.query().unwrap_or("").to_string(),
                 u.fragment().unwrap_or("").to_string(),
             )
-        });
+        },
+    );
 
     format!(
         "{}|{}|{}|{}|{}|{}",

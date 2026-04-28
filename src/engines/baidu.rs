@@ -50,13 +50,17 @@ impl Engine for Baidu {
         let resp = ctx.client.get(&url).send().await?;
 
         if let Some(loc) = resp.headers().get("location")
-            && loc.to_str().unwrap_or_default().contains("wappass.baidu.com/static/captcha") {
-                return Err(SearchError::Captcha("baidu"));
-            }
+            && loc
+                .to_str()
+                .unwrap_or_default()
+                .contains("wappass.baidu.com/static/captcha")
+        {
+            return Err(SearchError::Captcha("baidu"));
+        }
 
         let text = resp.text().await?;
-        let data: Resp = serde_json::from_str(&text)
-            .map_err(|e| SearchError::Engine("baidu", format!("invalid json: {e}")))?;
+        let data: Resp =
+            serde_json::from_str(&text).map_err(|e| SearchError::Engine("baidu", format!("invalid json: {e}")))?;
 
         let mut out = Vec::new();
         let Some(feed) = data.feed else {
