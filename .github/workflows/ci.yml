@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    name: build & test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      # Checkout this repo to a named subdirectory so path deps resolve correctly.
+      # Layout: web-search/  tokimo-package-web-fetch/
+      - uses: actions/checkout@v4
+        with:
+          path: web-search
+
+      # web-search depends on tokimo-package-web-fetch via path dep.
+      - uses: actions/checkout@v4
+        with:
+          repository: tokimo-lab/tokimo-package-web-fetch
+          path: tokimo-package-web-fetch
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: web-search
+
+      - name: cargo build
+        working-directory: web-search
+        run: cargo build --lib --bins --tests
+
+      - name: cargo test
+        working-directory: web-search
+        run: cargo test --lib --bins
+
+  lint:
+    name: fmt & clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: web-search
+
+      - uses: actions/checkout@v4
+        with:
+          repository: tokimo-lab/tokimo-package-web-fetch
+          path: tokimo-package-web-fetch
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: web-search
+
+      - name: cargo fmt
+        working-directory: web-search
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        working-directory: web-search
+        run: cargo clippy --lib --bins --tests -- -D warnings
