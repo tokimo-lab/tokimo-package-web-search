@@ -1,7 +1,11 @@
 //! 演示：list 模式 + detail 模式（降噪正文）。
 //! cargo run -p tokimo-web-search --example trump -- "特朗普 今天"
 
-#![allow(clippy::print_stdout, clippy::unwrap_used, clippy::cast_possible_truncation)]
+#![allow(
+    clippy::print_stdout,
+    clippy::unwrap_used,
+    clippy::cast_possible_truncation
+)]
 
 use std::fs::File;
 use std::io::Write;
@@ -15,8 +19,12 @@ async fn main() {
         .with_max_level(tracing::Level::WARN)
         .try_init();
 
-    let query = std::env::args().nth(1).unwrap_or_else(|| "特朗普 今天".to_string());
-    let out_path = std::env::args().nth(2).unwrap_or_else(|| "demo.txt".to_string());
+    let query = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "特朗普 今天".to_string());
+    let out_path = std::env::args()
+        .nth(2)
+        .unwrap_or_else(|| "demo.txt".to_string());
 
     let browser = LightpandaBrowser::autodetect().map(|b| Arc::new(b) as Arc<dyn BrowserFetch>);
 
@@ -40,10 +48,23 @@ async fn main() {
 
     let mut f = File::create(&out_path).expect("create demo.txt");
 
-    writeln!(f, "================================================================").unwrap();
+    writeln!(
+        f,
+        "================================================================"
+    )
+    .unwrap();
     writeln!(f, "查询: {query}").unwrap();
-    writeln!(f, "时间: {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%SZ")).unwrap();
-    writeln!(f, "================================================================\n").unwrap();
+    writeln!(
+        f,
+        "时间: {}",
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%SZ")
+    )
+    .unwrap();
+    writeln!(
+        f,
+        "================================================================\n"
+    )
+    .unwrap();
 
     writeln!(f, "### 引擎执行统计\n").unwrap();
     for s in &list.stats {

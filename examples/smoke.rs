@@ -12,7 +12,9 @@ use tokimo_web_search::{SearchOptions, Searcher};
 async fn main() {
     tracing_subscriber::fmt().init();
 
-    let query = std::env::args().nth(1).unwrap_or_else(|| "rust async".to_string());
+    let query = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "rust async".to_string());
     println!("Searching: {query}\n");
 
     // 如果系统里有 lightpanda，就启用 headless 路径
@@ -20,7 +22,8 @@ async fn main() {
     if browser.is_some() {
         println!("(lightpanda detected — toutiao/etc will use headless)\n");
     }
-    let browser = browser.map(|b| std::sync::Arc::new(b) as std::sync::Arc<dyn tokimo_web_search::BrowserFetch>);
+    let browser = browser
+        .map(|b| std::sync::Arc::new(b) as std::sync::Arc<dyn tokimo_web_search::BrowserFetch>);
 
     let searcher = Searcher::new_with_browser(&[], browser).expect("build searcher");
     let opts = SearchOptions {
@@ -39,7 +42,10 @@ async fn main() {
     for s in &resp.stats {
         match &s.error {
             Some(e) => println!("  {:12} {:>4}ms  FAIL  {e}", s.engine, s.elapsed_ms),
-            None => println!("  {:12} {:>4}ms  ok    {} items", s.engine, s.elapsed_ms, s.count),
+            None => println!(
+                "  {:12} {:>4}ms  ok    {} items",
+                s.engine, s.elapsed_ms, s.count
+            ),
         }
     }
 
@@ -74,7 +80,10 @@ async fn main() {
                 println!("title   : {}", d.title);
                 println!("byline  : {:?}", d.byline);
                 println!("length  : {}", d.length);
-                println!("excerpt : {}", truncate(d.excerpt.as_deref().unwrap_or(""), 160));
+                println!(
+                    "excerpt : {}",
+                    truncate(d.excerpt.as_deref().unwrap_or(""), 160)
+                );
                 println!("text(head): {}", truncate(&d.content_text, 300));
             }
             Ok(Err(e)) => println!("detail error: {e}"),
