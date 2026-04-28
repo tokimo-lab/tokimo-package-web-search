@@ -48,11 +48,14 @@ impl Engine for Zhihu {
         let doc = Html::parse_document(&body);
         let sel_item = crate::sel!(r"div.SearchResult-Card, div.Card.SearchResult-Card");
         let sel_a = crate::sel!(r"h2 a, .ContentItem-title a");
-        let sel_content = crate::sel!(r".RichContent-inner, .CopyrightRichText-richText, .RichText");
+        let sel_content =
+            crate::sel!(r".RichContent-inner, .CopyrightRichText-richText, .RichText");
 
         let mut out = Vec::new();
         for it in doc.select(&sel_item) {
-            let Some(a) = it.select(&sel_a).next() else { continue };
+            let Some(a) = it.select(&sel_a).next() else {
+                continue;
+            };
             let title = html_to_text(&a.inner_html());
             let href = a.value().attr("href").unwrap_or_default();
             let url = normalize_zhihu_url(href);
@@ -106,7 +109,11 @@ fn extract_initial_data(html: &str) -> Option<Vec<RawResult>> {
         let title = obj
             .get("title")
             .and_then(|v| v.as_str())
-            .or_else(|| obj.get("question").and_then(|q| q.get("name")).and_then(|v| v.as_str()))
+            .or_else(|| {
+                obj.get("question")
+                    .and_then(|q| q.get("name"))
+                    .and_then(|v| v.as_str())
+            })
             .unwrap_or("");
         let content = obj
             .get("excerpt")

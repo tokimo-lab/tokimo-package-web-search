@@ -69,37 +69,71 @@ async fn main() {
     writeln!(f, "### 引擎执行统计\n").unwrap();
     for s in &list.stats {
         match &s.error {
-            None => writeln!(f, "  {:10}  {:>4}ms  ok    {} items", s.engine, s.elapsed_ms, s.count).unwrap(),
-            Some(e) => writeln!(f, "  {:10}  {:>4}ms  FAIL  {}", s.engine, s.elapsed_ms, e).unwrap(),
+            None => writeln!(
+                f,
+                "  {:10}  {:>4}ms  ok    {} items",
+                s.engine, s.elapsed_ms, s.count
+            )
+            .unwrap(),
+            Some(e) => {
+                writeln!(f, "  {:10}  {:>4}ms  FAIL  {}", s.engine, s.elapsed_ms, e).unwrap()
+            }
         }
     }
 
-    writeln!(f, "\n================================================================").unwrap();
+    writeln!(
+        f,
+        "\n================================================================"
+    )
+    .unwrap();
     writeln!(
         f,
         "模式一：列表（去重后 {} 条，title + url + 描述 + 来源引擎）",
         list.results.len()
     )
     .unwrap();
-    writeln!(f, "================================================================\n").unwrap();
+    writeln!(
+        f,
+        "================================================================\n"
+    )
+    .unwrap();
     for (i, r) in list.results.iter().enumerate() {
-        writeln!(f, "[{:2}] score={:.3}  engines={:?}", i + 1, r.score, r.engines).unwrap();
+        writeln!(
+            f,
+            "[{:2}] score={:.3}  engines={:?}",
+            i + 1,
+            r.score,
+            r.engines
+        )
+        .unwrap();
         writeln!(f, "     title:  {}", r.title).unwrap();
         writeln!(f, "     url:    {}", r.url).unwrap();
         let desc = r.content.chars().take(180).collect::<String>();
         writeln!(f, "     desc:   {desc}\n").unwrap();
     }
 
-    writeln!(f, "\n================================================================").unwrap();
+    writeln!(
+        f,
+        "\n================================================================"
+    )
+    .unwrap();
     writeln!(
         f,
         "模式二：详情（Readability 降噪后的正文，前 {} 条）",
         detailed.results.len()
     )
     .unwrap();
-    writeln!(f, "================================================================\n").unwrap();
+    writeln!(
+        f,
+        "================================================================\n"
+    )
+    .unwrap();
     for (i, d) in detailed.results.iter().enumerate() {
-        writeln!(f, "------------------------------------------------------------").unwrap();
+        writeln!(
+            f,
+            "------------------------------------------------------------"
+        )
+        .unwrap();
         writeln!(f, "[{:2}] {}", i + 1, d.meta.title).unwrap();
         writeln!(f, "     url: {}", d.meta.url).unwrap();
         if let Some(err) = &d.detail_error {
@@ -115,7 +149,12 @@ async fn main() {
         }
         writeln!(f, "     length: {} chars", det.content_text.chars().count()).unwrap();
         if let Some(ex) = &det.excerpt {
-            writeln!(f, "     excerpt: {}", ex.chars().take(200).collect::<String>()).unwrap();
+            writeln!(
+                f,
+                "     excerpt: {}",
+                ex.chars().take(200).collect::<String>()
+            )
+            .unwrap();
         }
         let body = det.content_text.chars().take(1200).collect::<String>();
         writeln!(f, "\n     --- body (前 1200 字) ---\n{body}\n").unwrap();

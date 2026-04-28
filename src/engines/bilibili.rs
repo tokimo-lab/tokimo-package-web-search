@@ -76,8 +76,8 @@ impl Engine for Bilibili {
             .send()
             .await?;
         let text = resp.text().await?;
-        let data: Resp =
-            serde_json::from_str(&text).map_err(|e| SearchError::Engine("bilibili", format!("invalid json: {e}")))?;
+        let data: Resp = serde_json::from_str(&text)
+            .map_err(|e| SearchError::Engine("bilibili", format!("invalid json: {e}")))?;
 
         let items = data.data.and_then(|d| d.result).unwrap_or_default();
         let mut out = Vec::new();
@@ -94,7 +94,9 @@ impl Engine for Bilibili {
                     "https://player.bilibili.com/player.html?aid={aid_str}&high_quality=1&autoplay=false&danmaku=0"
                 ))
             };
-            let dt = it.pubdate.and_then(|t| chrono::Utc.timestamp_opt(t, 0).single());
+            let dt = it
+                .pubdate
+                .and_then(|t| chrono::Utc.timestamp_opt(t, 0).single());
             out.push(RawResult {
                 url: it.arcurl,
                 title: html_to_text(&it.title),

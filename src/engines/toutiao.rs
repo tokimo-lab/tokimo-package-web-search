@@ -47,8 +47,8 @@ impl Engine for Toutiao {
             return Err(SearchError::AuthRequired("toutiao"));
         };
         let json = &cap[1];
-        let data: serde_json::Value =
-            serde_json::from_str(json).map_err(|e| SearchError::Engine("toutiao", format!("invalid json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(json)
+            .map_err(|e| SearchError::Engine("toutiao", format!("invalid json: {e}")))?;
 
         let list = data
             .pointer("/data/data")

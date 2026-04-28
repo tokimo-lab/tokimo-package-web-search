@@ -10,7 +10,10 @@ pub fn extract_text(el: &ElementRef<'_>) -> String {
 
 #[allow(dead_code)]
 pub fn extract_text_from_sel(root: &ElementRef<'_>, sel: &Selector) -> String {
-    root.select(sel).next().map(|e| extract_text(&e)).unwrap_or_default()
+    root.select(sel)
+        .next()
+        .map(|e| extract_text(&e))
+        .unwrap_or_default()
 }
 
 pub fn collapse_whitespace(s: &str) -> String {

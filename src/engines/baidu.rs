@@ -59,8 +59,8 @@ impl Engine for Baidu {
         }
 
         let text = resp.text().await?;
-        let data: Resp =
-            serde_json::from_str(&text).map_err(|e| SearchError::Engine("baidu", format!("invalid json: {e}")))?;
+        let data: Resp = serde_json::from_str(&text)
+            .map_err(|e| SearchError::Engine("baidu", format!("invalid json: {e}")))?;
 
         let mut out = Vec::new();
         let Some(feed) = data.feed else {
@@ -74,7 +74,9 @@ impl Engine for Baidu {
                 continue;
             };
             let content = e.abs.unwrap_or_default();
-            let dt = e.time.and_then(|t| chrono::Utc.timestamp_opt(t, 0).single());
+            let dt = e
+                .time
+                .and_then(|t| chrono::Utc.timestamp_opt(t, 0).single());
             out.push(RawResult {
                 url,
                 title: html_unescape(&title),

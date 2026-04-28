@@ -52,7 +52,10 @@ impl Engine for Sogou {
             if item.select(&sel!(r"div.special-wrap")).next().is_some() {
                 continue;
             }
-            let link = item.select(&sel_a1).next().or_else(|| item.select(&sel_a2).next());
+            let link = item
+                .select(&sel_a1)
+                .next()
+                .or_else(|| item.select(&sel_a2).next());
             let Some(a) = link else { continue };
             let title = extract_text(&a);
             let href_raw = a.value().attr("href").unwrap_or_default();
@@ -60,10 +63,13 @@ impl Engine for Sogou {
             // /link?url=... 需要从 data-url 取真实 URL
             let href = if href_raw.starts_with("/link?url=") {
                 let item_html = item.html();
-                re_data_url.captures(&item_html).and_then(|c| c.get(1)).map_or_else(
-                    || format!("https://www.sogou.com{href_raw}"),
-                    |m| m.as_str().to_string(),
-                )
+                re_data_url
+                    .captures(&item_html)
+                    .and_then(|c| c.get(1))
+                    .map_or_else(
+                        || format!("https://www.sogou.com{href_raw}"),
+                        |m| m.as_str().to_string(),
+                    )
             } else {
                 href_raw.to_string()
             };

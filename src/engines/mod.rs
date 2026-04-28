@@ -19,7 +19,8 @@ use std::sync::Arc;
 /// 所有已实现引擎 ID（稳定顺序）
 pub fn available_engines() -> &'static [&'static str] {
     &[
-        "google", "bing", "yahoo", "baidu", "bilibili", "sogou", "360", "chinaso", "zhihu", "toutiao", "douyin",
+        "google", "bing", "yahoo", "baidu", "bilibili", "sogou", "360", "chinaso", "zhihu",
+        "toutiao", "douyin",
     ]
 }
 

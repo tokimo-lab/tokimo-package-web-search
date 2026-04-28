@@ -44,7 +44,11 @@ pub struct RawResult {
 }
 
 impl RawResult {
-    pub fn new(url: impl Into<String>, title: impl Into<String>, content: impl Into<String>) -> Self {
+    pub fn new(
+        url: impl Into<String>,
+        title: impl Into<String>,
+        content: impl Into<String>,
+    ) -> Self {
         Self {
             url: url.into(),
             title: title.into(),

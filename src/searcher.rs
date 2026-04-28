@@ -121,7 +121,9 @@ impl Searcher {
         } else {
             engine_ids
                 .iter()
-                .map(|id| build_engine(id).ok_or_else(|| SearchError::UnknownEngine((*id).to_string())))
+                .map(|id| {
+                    build_engine(id).ok_or_else(|| SearchError::UnknownEngine((*id).to_string()))
+                })
                 .collect::<SearchResult<Vec<_>>>()?
         };
 
@@ -173,7 +175,12 @@ impl Searcher {
                     }
                     Err(_) => {
                         warn!(engine = eng.id(), "engine timed out");
-                        (eng.id(), eng.weight(), Err(SearchError::Timeout), elapsed_ms)
+                        (
+                            eng.id(),
+                            eng.weight(),
+                            Err(SearchError::Timeout),
+                            elapsed_ms,
+                        )
                     }
                 }
             }
@@ -221,7 +228,11 @@ impl Searcher {
     }
 
     /// 同 [`search`] 但顺带把每条结果的详情页（Readability 降噪）也抓回来。
-    pub async fn search_with_details(&self, query: &str, opts: &SearchOptions) -> SearchResponseWithDetails {
+    pub async fn search_with_details(
+        &self,
+        query: &str,
+        opts: &SearchOptions,
+    ) -> SearchResponseWithDetails {
         let resp = self.search(query, opts).await;
         let client = self.client.clone();
         let timeout = opts.per_engine_timeout;
@@ -361,7 +372,11 @@ impl ResultContainer {
         }
 
         // 按分数降序
-        merged.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        merged.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         debug!(total = merged.len(), "dedup merged");
         merged
     }
