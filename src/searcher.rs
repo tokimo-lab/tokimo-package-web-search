@@ -552,11 +552,8 @@ mod tests {
 
     #[test]
     fn score_two_engines_higher_than_one() {
-        let weights: HashMap<String, f64> = [
-            ("google".to_string(), 1.0),
-            ("bing".to_string(), 1.0),
-        ]
-        .into();
+        let weights: HashMap<String, f64> =
+            [("google".to_string(), 1.0), ("bing".to_string(), 1.0)].into();
 
         let single = calculate_score(&["google".to_string()], &[1], &weights);
         let double = calculate_score(
@@ -595,11 +592,19 @@ mod tests {
         let mut c = ResultContainer::new();
         c.extend(
             "google",
-            vec![RawResult::new("https://example.com", "title G", "content G")],
+            vec![RawResult::new(
+                "https://example.com",
+                "title G",
+                "content G",
+            )],
         );
         c.extend(
             "bing",
-            vec![RawResult::new("https://example.com", "title B which is longer", "content B")],
+            vec![RawResult::new(
+                "https://example.com",
+                "title B which is longer",
+                "content B",
+            )],
         );
 
         let mut weights = HashMap::new();
@@ -618,11 +623,14 @@ mod tests {
     #[test]
     fn container_preserves_insertion_order_for_different_keys() {
         let mut c = ResultContainer::new();
-        c.extend("google", vec![
-            RawResult::new("https://a.com", "A", "c"),
-            RawResult::new("https://b.com", "B", "c"),
-            RawResult::new("https://c.com", "C", "c"),
-        ]);
+        c.extend(
+            "google",
+            vec![
+                RawResult::new("https://a.com", "A", "c"),
+                RawResult::new("https://b.com", "B", "c"),
+                RawResult::new("https://c.com", "C", "c"),
+            ],
+        );
         let weights = HashMap::new();
         let results = c.finish(&weights);
         assert_eq!(results.len(), 3);
@@ -652,14 +660,15 @@ mod tests {
     fn container_sorted_by_score_descending() {
         let mut c = ResultContainer::new();
         // result A: appears in google at position 1
-        c.extend("google", vec![
-            RawResult::new("https://a.com", "A", "c"),
-            RawResult::new("https://b.com", "B", "c"),
-        ]);
+        c.extend(
+            "google",
+            vec![
+                RawResult::new("https://a.com", "A", "c"),
+                RawResult::new("https://b.com", "B", "c"),
+            ],
+        );
         // result B: appears in google at pos 2 AND bing at pos 1
-        c.extend("bing", vec![
-            RawResult::new("https://b.com", "B", "c"),
-        ]);
+        c.extend("bing", vec![RawResult::new("https://b.com", "B", "c")]);
 
         let mut weights = HashMap::new();
         weights.insert("google".to_string(), 1.0);
