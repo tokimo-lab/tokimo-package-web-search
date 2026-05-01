@@ -432,3 +432,242 @@ fn calculate_score(engines: &[String], positions: &[usize], weights: &HashMap<St
 fn default_user_agent() -> String {
     "Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0".to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{RawResult, ResultTemplate};
+
+    // ─── strip_www ────────────────────────────────────────────────
+
+    #[test]
+    fn strip_www_removes_prefix() {
+        assert_eq!(strip_www("www.example.com"), "example.com");
+    }
+
+    #[test]
+    fn strip_www_noop_without_prefix() {
+        assert_eq!(strip_www("example.com"), "example.com");
+    }
+
+    // ─── dedup_key ────────────────────────────────────────────────
+
+    #[test]
+    fn dedup_key_same_url_same_template() {
+        let a = RawResult::new("https://example.com/page", "title", "content");
+        let b = RawResult::new("https://example.com/page", "other", "other");
+        assert_eq!(dedup_key(&a), dedup_key(&b));
+    }
+
+    #[test]
+    fn dedup_key_different_url_different_key() {
+        let a = RawResult::new("https://example.com/a", "title", "content");
+        let b = RawResult::new("https://example.com/b", "title", "content");
+        assert_ne!(dedup_key(&a), dedup_key(&b));
+    }
+
+    #[test]
+    fn dedup_key_different_template_different_key() {
+        let mut a = RawResult::new("https://example.com/page", "title", "content");
+        a.template = ResultTemplate::Videos;
+        let b = RawResult::new("https://example.com/page", "title", "content");
+        assert_ne!(dedup_key(&a), dedup_key(&b));
+    }
+
+    #[test]
+    fn dedup_key_www_normalized() {
+        let a = RawResult::new("https://www.example.com/page", "t", "c");
+        let b = RawResult::new("https://example.com/page", "t", "c");
+        assert_eq!(dedup_key(&a), dedup_key(&b));
+    }
+
+    #[test]
+    fn dedup_key_img_src_differs() {
+        let mut a = RawResult::new("https://example.com/page", "t", "c");
+        a.img_src = Some("https://img.com/a.jpg".to_string());
+        let b = RawResult::new("https://example.com/page", "t", "c");
+        assert_ne!(dedup_key(&a), dedup_key(&b));
+    }
+
+    // ─── merge_in_place ───────────────────────────────────────────
+
+    #[test]
+    fn merge_prefers_longer_title() {
+        let mut origin = RawResult::new("https://example.com", "short", "c");
+        let other = RawResult::new("https://example.com", "a much longer title", "c");
+        merge_in_place(&mut origin, other);
+        assert_eq!(origin.title, "a much longer title");
+    }
+
+    #[test]
+    fn merge_prefers_longer_content() {
+        let mut origin = RawResult::new("https://example.com", "t", "short");
+        let other = RawResult::new("https://example.com", "t", "a much longer content body");
+        merge_in_place(&mut origin, other);
+        assert_eq!(origin.content, "a much longer content body");
+    }
+
+    #[test]
+    fn merge_prefers_https() {
+        let mut origin = RawResult::new("http://example.com", "t", "c");
+        let other = RawResult::new("https://example.com", "t", "c");
+        merge_in_place(&mut origin, other);
+        assert_eq!(origin.url, "https://example.com");
+    }
+
+    #[test]
+    fn merge_fills_none_optional_fields() {
+        let mut origin = RawResult::new("https://example.com", "t", "c");
+        let mut other = RawResult::new("https://example.com", "t", "c");
+        other.thumbnail = Some("thumb.jpg".to_string());
+        other.author = Some("Alice".to_string());
+        other.published_date = Some(chrono::Utc::now());
+        merge_in_place(&mut origin, other);
+        assert_eq!(origin.thumbnail, Some("thumb.jpg".to_string()));
+        assert_eq!(origin.author, Some("Alice".to_string()));
+        assert!(origin.published_date.is_some());
+    }
+
+    #[test]
+    fn merge_keeps_existing_optional_fields() {
+        let mut origin = RawResult::new("https://example.com", "t", "c");
+        origin.author = Some("Bob".to_string());
+        let mut other = RawResult::new("https://example.com", "t", "c");
+        other.author = Some("Alice".to_string());
+        merge_in_place(&mut origin, other);
+        assert_eq!(origin.author, Some("Bob".to_string()));
+    }
+
+    // ─── calculate_score ──────────────────────────────────────────
+
+    #[test]
+    fn score_single_engine_position_1() {
+        let engines = vec!["google".to_string()];
+        let positions = vec![1];
+        let weights: HashMap<String, f64> = [("google".to_string(), 1.0)].into();
+        let score = calculate_score(&engines, &positions, &weights);
+        // weight = 1.0 * 1 (engine count) = 1.0; score = 1.0/1 = 1.0
+        assert!((score - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn score_two_engines_higher_than_one() {
+        let weights: HashMap<String, f64> = [
+            ("google".to_string(), 1.0),
+            ("bing".to_string(), 1.0),
+        ]
+        .into();
+
+        let single = calculate_score(&["google".to_string()], &[1], &weights);
+        let double = calculate_score(
+            &["google".to_string(), "bing".to_string()],
+            &[1, 1],
+            &weights,
+        );
+        // double: weight = 1*1*2 = 2; score = 2/1 + 2/1 = 4
+        assert!(double > single);
+    }
+
+    #[test]
+    fn score_position_weight_decays() {
+        let weights: HashMap<String, f64> = [("google".to_string(), 1.0)].into();
+        let pos1 = calculate_score(&["google".to_string()], &[1], &weights);
+        let pos5 = calculate_score(&["google".to_string()], &[5], &weights);
+        assert!(pos1 > pos5);
+    }
+
+    #[test]
+    fn score_engine_weight_multiplier() {
+        let mut weights_lo: HashMap<String, f64> = HashMap::new();
+        weights_lo.insert("a".to_string(), 0.5);
+        let mut weights_hi: HashMap<String, f64> = HashMap::new();
+        weights_hi.insert("a".to_string(), 2.0);
+
+        let lo = calculate_score(&["a".to_string()], &[1], &weights_lo);
+        let hi = calculate_score(&["a".to_string()], &[1], &weights_hi);
+        assert!(hi > lo);
+    }
+
+    // ─── ResultContainer integration ──────────────────────────────
+
+    #[test]
+    fn container_deduplicates_and_merges() {
+        let mut c = ResultContainer::new();
+        c.extend(
+            "google",
+            vec![RawResult::new("https://example.com", "title G", "content G")],
+        );
+        c.extend(
+            "bing",
+            vec![RawResult::new("https://example.com", "title B which is longer", "content B")],
+        );
+
+        let mut weights = HashMap::new();
+        weights.insert("google".to_string(), 1.0);
+        weights.insert("bing".to_string(), 1.0);
+
+        let results = c.finish(&weights);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].engines.len(), 2);
+        assert!(results[0].engines.contains(&"google".to_string()));
+        assert!(results[0].engines.contains(&"bing".to_string()));
+        // title should be the longer one
+        assert_eq!(results[0].title, "title B which is longer");
+    }
+
+    #[test]
+    fn container_preserves_insertion_order_for_different_keys() {
+        let mut c = ResultContainer::new();
+        c.extend("google", vec![
+            RawResult::new("https://a.com", "A", "c"),
+            RawResult::new("https://b.com", "B", "c"),
+            RawResult::new("https://c.com", "C", "c"),
+        ]);
+        let weights = HashMap::new();
+        let results = c.finish(&weights);
+        assert_eq!(results.len(), 3);
+        assert_eq!(results[0].url, "https://a.com");
+        assert_eq!(results[1].url, "https://b.com");
+        assert_eq!(results[2].url, "https://c.com");
+    }
+
+    #[test]
+    fn container_skips_empty_url_or_title() {
+        let mut c = ResultContainer::new();
+        c.extend(
+            "google",
+            vec![
+                RawResult::new("", "title", "content"),
+                RawResult::new("https://ok.com", "", "content"),
+                RawResult::new("https://ok.com", "valid", "content"),
+            ],
+        );
+        let weights = HashMap::new();
+        let results = c.finish(&weights);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].url, "https://ok.com");
+    }
+
+    #[test]
+    fn container_sorted_by_score_descending() {
+        let mut c = ResultContainer::new();
+        // result A: appears in google at position 1
+        c.extend("google", vec![
+            RawResult::new("https://a.com", "A", "c"),
+            RawResult::new("https://b.com", "B", "c"),
+        ]);
+        // result B: appears in google at pos 2 AND bing at pos 1
+        c.extend("bing", vec![
+            RawResult::new("https://b.com", "B", "c"),
+        ]);
+
+        let mut weights = HashMap::new();
+        weights.insert("google".to_string(), 1.0);
+        weights.insert("bing".to_string(), 1.0);
+
+        let results = c.finish(&weights);
+        // B has two engines (weight=2*1=2, score=2/2+2/1=3), A has one (weight=1, score=1/1=1)
+        assert_eq!(results[0].url, "https://b.com");
+        assert!(results[0].score > results[1].score);
+    }
+}

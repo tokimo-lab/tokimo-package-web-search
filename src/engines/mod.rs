@@ -6,6 +6,7 @@ mod bing;
 mod chinaso;
 mod common;
 mod douyin;
+mod duckduckgo;
 mod google;
 mod so360;
 mod sogou;
@@ -19,8 +20,8 @@ use std::sync::Arc;
 /// 所有已实现引擎 ID（稳定顺序）
 pub fn available_engines() -> &'static [&'static str] {
     &[
-        "google", "bing", "yahoo", "baidu", "bilibili", "sogou", "360", "chinaso", "zhihu",
-        "toutiao", "douyin",
+        "google", "bing", "yahoo", "duckduckgo", "baidu", "bilibili", "sogou", "360", "chinaso",
+        "zhihu", "toutiao", "douyin",
     ]
 }
 
@@ -30,7 +31,7 @@ pub fn available_engines() -> &'static [&'static str] {
 /// `toutiao` 在注入 headless browser 时才会返回结果，未注入时会抛 AuthRequired。
 pub fn default_engine_ids() -> &'static [&'static str] {
     &[
-        "google", "bing", "yahoo", "baidu", "bilibili", "sogou", "360", "toutiao",
+        "google", "bing", "yahoo", "duckduckgo", "baidu", "bilibili", "sogou", "360", "toutiao",
     ]
 }
 
@@ -40,6 +41,7 @@ pub fn build_engine(id: &str) -> Option<Arc<dyn Engine>> {
         "google" => Arc::new(google::Google),
         "bing" => Arc::new(bing::Bing),
         "yahoo" => Arc::new(yahoo::Yahoo),
+        "duckduckgo" => Arc::new(duckduckgo::DuckDuckGo),
         "baidu" => Arc::new(baidu::Baidu),
         "bilibili" => Arc::new(bilibili::Bilibili),
         "sogou" => Arc::new(sogou::Sogou),
