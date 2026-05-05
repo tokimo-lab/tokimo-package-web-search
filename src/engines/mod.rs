@@ -5,9 +5,14 @@ mod bilibili;
 mod bing;
 mod chinaso;
 mod common;
+mod csdn;
 mod douyin;
 mod duckduckgo;
+mod github;
+mod github_code;
 mod google;
+mod juejin;
+mod linuxdo;
 mod so360;
 mod sogou;
 mod toutiao;
@@ -32,6 +37,11 @@ pub fn available_engines() -> &'static [&'static str] {
         "zhihu",
         "toutiao",
         "douyin",
+        "github",
+        "github-code",
+        "csdn",
+        "juejin",
+        "linuxdo",
     ]
 }
 
@@ -64,6 +74,11 @@ pub fn build_engine(id: &str) -> Option<Arc<dyn Engine>> {
         "bilibili" => Arc::new(bilibili::Bilibili),
         "sogou" => Arc::new(sogou::Sogou),
         "360" | "so360" => Arc::new(so360::So360),
+        "github" | "github_repos" | "gh" => Arc::new(github::Github),
+        "github-code" | "gh-code" => Arc::new(github_code::GithubCode),
+        "csdn" => Arc::new(csdn::Csdn),
+        "juejin" => Arc::new(juejin::Juejin),
+        "linuxdo" => Arc::new(linuxdo::LinuxDo),
         "chinaso" => Arc::new(chinaso::ChinaSo),
         "zhihu" => Arc::new(zhihu::Zhihu),
         "toutiao" => Arc::new(toutiao::Toutiao),
