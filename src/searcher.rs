@@ -89,7 +89,7 @@ pub struct Searcher {
     client: Client,
     engines: Vec<Arc<dyn Engine>>,
     user_agent: String,
-    browser: Option<Arc<dyn crate::browser::BrowserFetch>>,
+    browser: Option<Arc<dyn tokimo_web_fetch::BrowserFetch>>,
 }
 
 impl Searcher {
@@ -102,7 +102,7 @@ impl Searcher {
     /// （toutiao / zhihu / douyin / google）会优先通过浏览器拉 HTML。
     pub fn new_with_browser(
         engine_ids: &[&str],
-        browser: Option<Arc<dyn crate::browser::BrowserFetch>>,
+        browser: Option<Arc<dyn tokimo_web_fetch::BrowserFetch>>,
     ) -> SearchResult<Self> {
         let user_agent = default_user_agent();
         let client = Client::builder()

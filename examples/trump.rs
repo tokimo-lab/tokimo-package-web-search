@@ -11,7 +11,8 @@ use std::fs::File;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
-use tokimo_web_search::{BrowserFetch, LightpandaBrowser, SearchOptions, Searcher};
+use tokimo_web_fetch::{BrowserFetch, ChromeBrowser};
+use tokimo_web_search::{SearchOptions, Searcher};
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
@@ -26,7 +27,7 @@ async fn main() {
         .nth(2)
         .unwrap_or_else(|| "demo.txt".to_string());
 
-    let browser = LightpandaBrowser::autodetect().map(|b| Arc::new(b) as Arc<dyn BrowserFetch>);
+    let browser = ChromeBrowser::autodetect().map(|b| Arc::new(b) as Arc<dyn BrowserFetch>);
 
     let searcher = Searcher::new_with_browser(&[], browser).expect("build searcher");
 

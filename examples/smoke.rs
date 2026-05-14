@@ -17,13 +17,13 @@ async fn main() {
         .unwrap_or_else(|| "rust async".to_string());
     println!("Searching: {query}\n");
 
-    // 如果系统里有 lightpanda，就启用 headless 路径
-    let browser = tokimo_web_search::LightpandaBrowser::autodetect();
+    // 如果系统里有 Chrome，就启用 headless 路径
+    let browser = tokimo_web_fetch::ChromeBrowser::autodetect();
     if browser.is_some() {
-        println!("(lightpanda detected — toutiao/etc will use headless)\n");
+        println!("(chrome detected — toutiao/etc will use headless)\n");
     }
     let browser = browser
-        .map(|b| std::sync::Arc::new(b) as std::sync::Arc<dyn tokimo_web_search::BrowserFetch>);
+        .map(|b| std::sync::Arc::new(b) as std::sync::Arc<dyn tokimo_web_fetch::BrowserFetch>);
 
     let searcher = Searcher::new_with_browser(&[], browser).expect("build searcher");
     let opts = SearchOptions {

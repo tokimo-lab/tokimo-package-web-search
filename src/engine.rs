@@ -16,8 +16,8 @@ pub struct EngineContext {
     pub safesearch: u8,
     pub user_agent: String,
     /// 可选 headless 浏览器；纯 JS / 强反爬站（toutiao / zhihu / douyin / google）
-    /// 在注入时才能拿到真实结果。见 [`crate::browser`]。
-    pub browser: Option<Arc<dyn crate::browser::BrowserFetch>>,
+    /// 在注入时才能拿到真实结果。
+    pub browser: Option<Arc<dyn tokimo_web_fetch::BrowserFetch>>,
 }
 
 #[async_trait]

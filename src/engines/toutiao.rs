@@ -2,7 +2,6 @@
 //!
 //! - **HTTP 路径**：首屏 `window._SSR_DATA` 已被反爬覆盖，基本都会 AuthRequired。
 //! - **浏览器路径**（ctx.browser 非空）：走 headless 渲染后从 DOM 抽卡片。
-//!   已实测 lightpanda 能拿到结果。
 
 use crate::engine::{Engine, EngineContext};
 use crate::engines::common::html_to_text;
@@ -96,7 +95,7 @@ impl Engine for Toutiao {
 }
 
 fn parse_toutiao_dom(html: &str) -> SearchResult<Vec<RawResult>> {
-    // Lightpanda 渲染后真实数据在 <script data-druid-card-data-id type="application/json">
+    // 浏览器渲染后真实数据在 <script data-druid-card-data-id type="application/json">
     // 结构：{"data":{"url":"...", "display":{"emphasized":{"title":"...","summary":"..."},
     //                                         "summary":{"text":"..."}}}}
     let doc = Html::parse_document(html);

@@ -10,7 +10,6 @@
 
 #![allow(clippy::module_name_repetitions)]
 
-pub mod browser;
 pub mod engine;
 pub mod engines;
 pub mod error;
@@ -18,7 +17,6 @@ pub mod readability;
 pub mod searcher;
 pub mod types;
 
-pub use browser::{BrowserFetch, LightpandaBrowser};
 pub use engine::{Engine, EngineContext};
 pub use engines::{available_engines, build_engine, default_engine_ids};
 pub use error::{SearchError, SearchResult as Result};
