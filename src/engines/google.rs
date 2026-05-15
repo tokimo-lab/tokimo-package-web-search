@@ -42,7 +42,7 @@ impl Engine for Google {
             let _ = browser.fetch_html("https://www.google.com/").await;
             let html = browser.fetch_html(&url).await?;
             check_google_captcha(&html)?;
-            return parse_google_html(&html);
+            return Ok(parse_google_html(&html));
         }
 
         let resp = ctx
@@ -60,7 +60,7 @@ impl Engine for Google {
 
         let html = resp.text().await?;
         check_google_captcha(&html)?;
-        let results = parse_google_html(&html).unwrap_or_default();
+        let results = parse_google_html(&html);
         if results.is_empty() {
             debug!(
                 engine = "google",
@@ -71,7 +71,7 @@ impl Engine for Google {
     }
 }
 
-fn parse_google_html(html: &str) -> SearchResult<Vec<RawResult>> {
+fn parse_google_html(html: &str) -> Vec<RawResult> {
     let doc = Html::parse_document(html);
     let mut results = Vec::new();
 
@@ -122,7 +122,7 @@ fn parse_google_html(html: &str) -> SearchResult<Vec<RawResult>> {
     }
 
     debug!(engine = "google", count = results.len(), "parsed");
-    Ok(results)
+    results
 }
 
 /// 检测 Google CAPTCHA / "unusual traffic" 页面。

@@ -213,7 +213,7 @@ mod tests {
             brief_content: Some("简介".into()),
             view_count: Some(1000),
             digg_count: Some(50),
-            ctime: Some(serde_json::json!(1700000000)),
+            ctime: Some(serde_json::json!(1_700_000_000)),
         };
         let mut parts = Vec::new();
         if let Some(brief) = &ai.brief_content {

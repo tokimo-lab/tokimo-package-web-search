@@ -131,7 +131,7 @@ fn extract_initial_data(html: &str) -> Option<Vec<RawResult>> {
         let published_date = obj
             .get("created_time")
             .or_else(|| obj.get("updated_time"))
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .and_then(unix_ts);
         out.push(RawResult {
             url,

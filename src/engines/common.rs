@@ -121,10 +121,7 @@ fn parse_iso(s: &str) -> Option<DateTime<Utc>> {
             }
             // +08:00 or +0800
             let sign: i32 = if off_str.starts_with('+') { 1 } else { -1 };
-            let digits: String = off_str[1..]
-                .chars()
-                .filter(|c| c.is_ascii_digit())
-                .collect();
+            let digits: String = off_str[1..].chars().filter(char::is_ascii_digit).collect();
             if digits.len() >= 4 {
                 let oh: i32 = digits[..2].parse().ok()?;
                 let om: i32 = digits[2..4].parse().ok()?;
