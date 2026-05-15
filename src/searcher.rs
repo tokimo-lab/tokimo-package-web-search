@@ -12,9 +12,11 @@ use crate::readability::{DetailResult, fetch_detail};
 use crate::types::{MergedResult, RawResult};
 use futures::future::join_all;
 use reqwest::Client;
+use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, HeaderMap, HeaderValue, UPGRADE_INSECURE_REQUESTS};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::OnceCell;
 use tracing::{debug, warn};
 use url::Url;
 
@@ -90,6 +92,7 @@ pub struct Searcher {
     engines: Vec<Arc<dyn Engine>>,
     user_agent: String,
     browser: Option<Arc<dyn tokimo_web_fetch::BrowserFetch>>,
+    warmup_once: OnceCell<()>,
 }
 
 impl Searcher {
@@ -105,8 +108,40 @@ impl Searcher {
         browser: Option<Arc<dyn tokimo_web_fetch::BrowserFetch>>,
     ) -> SearchResult<Self> {
         let user_agent = default_user_agent();
+
+        let mut default_headers = HeaderMap::new();
+        default_headers.insert(
+            ACCEPT,
+            HeaderValue::from_static(
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            ),
+        );
+        default_headers.insert(
+            ACCEPT_LANGUAGE,
+            HeaderValue::from_static("en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7"),
+        );
+        default_headers.insert("cache-control", HeaderValue::from_static("no-cache"));
+        default_headers.insert("pragma", HeaderValue::from_static("no-cache"));
+        default_headers.insert(UPGRADE_INSECURE_REQUESTS, HeaderValue::from_static("1"));
+        default_headers.insert("sec-fetch-dest", HeaderValue::from_static("document"));
+        default_headers.insert("sec-fetch-mode", HeaderValue::from_static("navigate"));
+        default_headers.insert("sec-fetch-site", HeaderValue::from_static("none"));
+        default_headers.insert("sec-fetch-user", HeaderValue::from_static("?1"));
+        default_headers.insert(
+            "sec-ch-ua",
+            HeaderValue::from_static(
+                r#""Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147""#,
+            ),
+        );
+        default_headers.insert("sec-ch-ua-mobile", HeaderValue::from_static("?0"));
+        default_headers.insert(
+            "sec-ch-ua-platform",
+            HeaderValue::from_static(r#""Windows""#),
+        );
+
         let client = Client::builder()
             .user_agent(&user_agent)
+            .default_headers(default_headers)
             .cookie_store(true)
             .gzip(true)
             .brotli(true)
@@ -132,11 +167,52 @@ impl Searcher {
             engines,
             user_agent,
             browser,
+            warmup_once: OnceCell::new(),
         })
+    }
+
+    /// 首次调用时并发访问各引擎首页，获取初始 cookie。后续调用为空操作。
+    async fn do_warmup(&self) {
+        let urls: Vec<(&str, &str)> = self
+            .engines
+            .iter()
+            .filter_map(|e| e.warmup_url().map(|u| (e.id(), u)))
+            .collect();
+        if urls.is_empty() {
+            return;
+        }
+        self.warmup_once
+            .get_or_init(|| async {
+                let futs: Vec<_> = urls
+                    .into_iter()
+                    .map(|(eid, url)| {
+                        let c = self.client.clone();
+                        let u = url.to_string();
+                        let id = eid.to_string();
+                        async move {
+                            match tokio::time::timeout(Duration::from_secs(10), c.get(&u).send())
+                                .await
+                            {
+                                Ok(Ok(resp)) => {
+                                    let _ = resp.text().await;
+                                    debug!(engine = %id, "warmup ok");
+                                }
+                                Ok(Err(e)) => debug!(engine = %id, err = %e, "warmup failed"),
+                                Err(_) => debug!(engine = %id, "warmup timeout"),
+                            }
+                        }
+                    })
+                    .collect();
+                join_all(futs).await;
+            })
+            .await;
     }
 
     /// 并发搜索所有启用的引擎，返回去重排序后的结果。
     pub async fn search(&self, query: &str, opts: &SearchOptions) -> SearchResponse {
+        // 首次搜索前访问各引擎首页，获取初始 cookie（每个进程只做一次）
+        self.do_warmup().await;
+
         let selected: Vec<Arc<dyn Engine>> = self
             .engines
             .iter()
@@ -430,7 +506,7 @@ fn calculate_score(engines: &[String], positions: &[usize], weights: &HashMap<St
 }
 
 fn default_user_agent() -> String {
-    "Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0".to_string()
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36".to_string()
 }
 
 #[cfg(test)]

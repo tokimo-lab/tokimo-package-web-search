@@ -4,7 +4,7 @@
 //! Body: { key_word, limit: 10, cursor: "0", sort_type: 0 }
 
 use crate::engine::{Engine, EngineContext};
-use crate::engines::common::html_to_text;
+use crate::engines::common::{html_to_text, unix_ts};
 use crate::error::{SearchError, SearchResult};
 use crate::types::RawResult;
 use async_trait::async_trait;
@@ -15,10 +15,12 @@ pub struct Juejin;
 
 #[derive(Debug, Serialize)]
 struct ReqBody<'a> {
+    search_type: u32,
     key_word: &'a str,
-    limit: u32,
+    id_type: u32,
     cursor: &'a str,
-    sort_type: u32,
+    limit: u32,
+    search_id: &'a str,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,7 +33,7 @@ struct Resp {
 #[derive(Debug, Deserialize)]
 struct Item {
     result_model: ResultModel,
-    title: Option<String>,
+    title_highlight: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,9 +45,12 @@ struct ResultModel {
 
 #[derive(Debug, Deserialize)]
 struct ArticleInfo {
+    title: Option<String>,
     brief_content: Option<String>,
     view_count: Option<u64>,
     digg_count: Option<u64>,
+    #[serde(default)]
+    ctime: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,15 +74,17 @@ impl Engine for Juejin {
 
         loop {
             let body = ReqBody {
+                search_type: 2,
                 key_word: &ctx.query,
-                limit,
+                id_type: 0,
                 cursor: &cursor,
-                sort_type: 0,
+                limit,
+                search_id: "",
             };
 
             let resp = ctx
                 .client
-                .post("https://api.juejin.cn/search_api/v1/article/search")
+                .post("https://api.juejin.cn/search_api/v1/search")
                 .json(&body)
                 .send()
                 .await?;
@@ -87,11 +94,16 @@ impl Engine for Juejin {
 
             let items = data.data.unwrap_or_default();
             for it in items {
-                let Some(title) = it.title.filter(|t| !t.is_empty()) else {
-                    continue;
-                };
-                let url = format!("https://juejin.cn/post/{}", it.result_model.article_id);
                 let ai = &it.result_model.article_info;
+                let title = ai
+                    .title
+                    .as_deref()
+                    .or(it.title_highlight.as_deref())
+                    .unwrap_or("");
+                if title.is_empty() {
+                    continue;
+                }
+                let url = format!("https://juejin.cn/post/{}", it.result_model.article_id);
                 let mut parts = Vec::new();
                 if let Some(brief) = &ai.brief_content {
                     parts.push(html_to_text(brief));
@@ -102,11 +114,20 @@ impl Engine for Juejin {
                 if let Some(d) = ai.digg_count {
                     parts.push(format!("likes: {d}"));
                 }
+                let published_date = ai.ctime.as_ref().and_then(|v| {
+                    let ts: i64 = match v {
+                        serde_json::Value::Number(n) => n.as_i64()?,
+                        serde_json::Value::String(s) => s.parse().ok()?,
+                        _ => return None,
+                    };
+                    unix_ts(ts)
+                });
                 out.push(RawResult {
                     url,
-                    title,
+                    title: title.to_string(),
                     content: parts.join(" | "),
                     author: it.result_model.author_user_info.user_name,
+                    published_date,
                     ..RawResult::new("", "", "")
                 });
             }
@@ -137,13 +158,15 @@ mod tests {
         let json = r#"{
             "data": [
                 {
-                    "title": "Rust 异步编程",
+                    "title_highlight": "Rust 异步编程",
                     "result_model": {
                         "article_id": "7123456789",
                         "article_info": {
+                            "title": "Rust 异步编程",
                             "brief_content": "深入理解 tokio",
                             "view_count": 5000,
-                            "digg_count": 120
+                            "digg_count": 120,
+                            "ctime": 1700000000
                         },
                         "author_user_info": {
                             "user_name": "rustacean"
@@ -160,7 +183,10 @@ mod tests {
         assert_eq!(data.has_more, Some(true));
 
         let item = &data.data.unwrap()[0];
-        assert_eq!(item.title.as_deref(), Some("Rust 异步编程"));
+        assert_eq!(
+            item.result_model.article_info.title.as_deref(),
+            Some("Rust 异步编程")
+        );
         assert_eq!(item.result_model.article_id, "7123456789");
         assert_eq!(
             item.result_model.article_info.brief_content.as_deref(),
@@ -170,6 +196,7 @@ mod tests {
             item.result_model.author_user_info.user_name.as_deref(),
             Some("rustacean")
         );
+        assert!(item.result_model.article_info.ctime.is_some());
     }
 
     #[test]
@@ -182,9 +209,11 @@ mod tests {
     #[test]
     fn content_format_full() {
         let ai = ArticleInfo {
+            title: Some("test".into()),
             brief_content: Some("简介".into()),
             view_count: Some(1000),
             digg_count: Some(50),
+            ctime: Some(serde_json::json!(1700000000)),
         };
         let mut parts = Vec::new();
         if let Some(brief) = &ai.brief_content {
@@ -202,9 +231,11 @@ mod tests {
     #[test]
     fn content_format_no_optional() {
         let ai = ArticleInfo {
+            title: None,
             brief_content: None,
             view_count: None,
             digg_count: None,
+            ctime: None,
         };
         let mut parts = Vec::new();
         if let Some(brief) = &ai.brief_content {
@@ -232,18 +263,16 @@ mod tests {
         let json = r#"{
             "data": [
                 {
-                    "title": "",
                     "result_model": {
                         "article_id": "1",
-                        "article_info": { "brief_content": "x", "view_count": 1, "digg_count": 1 },
+                        "article_info": { "title": "", "brief_content": "x", "view_count": 1, "digg_count": 1 },
                         "author_user_info": { "user_name": "u" }
                     }
                 },
                 {
-                    "title": "Good Title",
                     "result_model": {
                         "article_id": "2",
-                        "article_info": { "brief_content": "y", "view_count": 2, "digg_count": 2 },
+                        "article_info": { "title": "Good Title", "brief_content": "y", "view_count": 2, "digg_count": 2 },
                         "author_user_info": { "user_name": "v" }
                     }
                 }
@@ -255,9 +284,18 @@ mod tests {
             .data
             .unwrap()
             .into_iter()
-            .filter(|it| it.title.as_deref().is_some_and(|t| !t.is_empty()))
+            .filter(|it| {
+                it.result_model
+                    .article_info
+                    .title
+                    .as_deref()
+                    .is_some_and(|t| !t.is_empty())
+            })
             .collect();
         assert_eq!(valid.len(), 1);
-        assert_eq!(valid[0].title.as_deref(), Some("Good Title"));
+        assert_eq!(
+            valid[0].result_model.article_info.title.as_deref(),
+            Some("Good Title")
+        );
     }
 }

@@ -16,6 +16,9 @@ impl Engine for Douyin {
     fn id(&self) -> &'static str {
         "douyin"
     }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.douyin.com/")
+    }
     fn is_china(&self) -> bool {
         true
     }

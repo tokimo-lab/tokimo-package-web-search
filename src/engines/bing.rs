@@ -5,7 +5,7 @@
 //! 部分链接被 base64 重编码：`https://www.bing.com/ck/a?...&u=a1<b64>`
 
 use crate::engine::{Engine, EngineContext};
-use crate::engines::common::extract_text;
+use crate::engines::common::{extract_text, parse_date_text};
 use crate::error::SearchResult;
 use crate::sel;
 use crate::types::RawResult;
@@ -21,6 +21,9 @@ pub struct Bing;
 impl Engine for Bing {
     fn id(&self) -> &'static str {
         "bing"
+    }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.bing.com/")
     }
 
     async fn search(&self, ctx: &EngineContext) -> SearchResult<Vec<RawResult>> {
@@ -40,6 +43,7 @@ impl Engine for Bing {
         let sel_item = sel!("ol#b_results > li.b_algo");
         let sel_link = sel!("h2 a");
         let sel_content = sel!("p");
+        let sel_date = sel!("p.b_lineclamp2");
 
         let mut results = Vec::new();
 
@@ -82,10 +86,16 @@ impl Engine for Bing {
                 .map(|e| extract_text(&e))
                 .unwrap_or_default();
 
+            let published_date = item
+                .select(&sel_date)
+                .next()
+                .and_then(|e| parse_date_text(&extract_text(&e)));
+
             results.push(RawResult {
                 url: real,
                 title,
                 content,
+                published_date,
                 ..RawResult::new("", "", "")
             });
         }

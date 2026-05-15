@@ -4,7 +4,7 @@
 //! 分页：page-number 循环，直到收集够结果或返回空。
 
 use crate::engine::{Engine, EngineContext};
-use crate::engines::common::html_to_text;
+use crate::engines::common::{html_to_text, parse_date_text};
 use crate::error::{SearchError, SearchResult};
 use crate::types::RawResult;
 use async_trait::async_trait;
@@ -24,6 +24,7 @@ struct Item {
     url_location: Option<String>,
     digest: Option<String>,
     nickname: Option<String>,
+    created_at: Option<String>,
 }
 
 #[async_trait]
@@ -67,11 +68,13 @@ impl Engine for Csdn {
                 };
                 let title = it.title.unwrap_or_default();
                 let content = it.digest.map(|d| html_to_text(&d)).unwrap_or_default();
+                let published_date = it.created_at.as_deref().and_then(parse_date_text);
                 out.push(RawResult {
                     url,
                     title,
                     content,
                     author: it.nickname,
+                    published_date,
                     ..RawResult::new("", "", "")
                 });
             }
@@ -99,7 +102,8 @@ mod tests {
                     "title": "Rust 入门教程",
                     "url_location": "https://blog.csdn.net/user/article/123",
                     "digest": "本文介绍 <em>Rust</em> 基础",
-                    "nickname": "test_user"
+                    "nickname": "test_user",
+                    "created_at": "2025-10-11 03:53:32"
                 }
             ]
         }"#;

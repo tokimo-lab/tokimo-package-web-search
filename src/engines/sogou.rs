@@ -4,7 +4,7 @@
 //! 注意：302 到 antispider 表示触发反爬。
 
 use crate::engine::{Engine, EngineContext};
-use crate::engines::common::extract_text;
+use crate::engines::common::{extract_text, parse_date_text};
 use crate::error::{SearchError, SearchResult};
 use crate::sel;
 use crate::types::RawResult;
@@ -19,6 +19,9 @@ pub struct Sogou;
 impl Engine for Sogou {
     fn id(&self) -> &'static str {
         "sogou"
+    }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.sogou.com/")
     }
     fn is_china(&self) -> bool {
         true
@@ -43,6 +46,7 @@ impl Engine for Sogou {
         let sel_a2 = sel!(r"h3.vr-title a");
         let sel_ft = sel!(r"div.ft");
         let sel_attr = sel!(r"div.attribute-centent, div.fz-mid.space-txt");
+        let sel_date = sel!(r"span.cite-date, span.text-lightgray");
 
         let re_data_url = Regex::new(r#"data-url="([^"]+)""#).unwrap();
 
@@ -85,10 +89,16 @@ impl Engine for Sogou {
                 .map(|e| extract_text(&e))
                 .unwrap_or_default();
 
+            let published_date = item
+                .select(&sel_date)
+                .next()
+                .and_then(|e| parse_date_text(&extract_text(&e)));
+
             results.push(RawResult {
                 url: href,
                 title,
                 content,
+                published_date,
                 ..RawResult::new("", "", "")
             });
         }

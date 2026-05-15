@@ -20,6 +20,9 @@ impl Engine for Toutiao {
     fn id(&self) -> &'static str {
         "toutiao"
     }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.toutiao.com/")
+    }
     fn is_china(&self) -> bool {
         true
     }

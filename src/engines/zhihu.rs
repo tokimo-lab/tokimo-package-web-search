@@ -6,7 +6,7 @@
 //! 如果被重定向到登录或数据缺失则返回 `AuthRequired`。
 
 use crate::engine::{Engine, EngineContext};
-use crate::engines::common::html_to_text;
+use crate::engines::common::{html_to_text, unix_ts};
 use crate::error::{SearchError, SearchResult};
 use crate::types::RawResult;
 use async_trait::async_trait;
@@ -19,6 +19,9 @@ pub struct Zhihu;
 impl Engine for Zhihu {
     fn id(&self) -> &'static str {
         "zhihu"
+    }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.zhihu.com/")
     }
     fn is_china(&self) -> bool {
         true
@@ -125,10 +128,16 @@ fn extract_initial_data(html: &str) -> Option<Vec<RawResult>> {
             continue;
         }
         let url = url.replace("api.zhihu.com/answers/", "www.zhihu.com/answer/");
+        let published_date = obj
+            .get("created_time")
+            .or_else(|| obj.get("updated_time"))
+            .and_then(|v| v.as_i64())
+            .and_then(unix_ts);
         out.push(RawResult {
             url,
             title: html_to_text(title),
             content: html_to_text(content),
+            published_date,
             ..RawResult::new("", "", "")
         });
     }

@@ -39,6 +39,9 @@ impl Engine for ChinaSo {
     fn id(&self) -> &'static str {
         "chinaso"
     }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.chinaso.com/")
+    }
     fn is_china(&self) -> bool {
         true
     }

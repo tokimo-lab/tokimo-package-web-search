@@ -40,5 +40,11 @@ pub trait Engine: Send + Sync {
         "general"
     }
 
+    /// 首页 URL — 首次搜索前访问一次，用于获取初始 cookie。
+    /// 返回 `None` 表示不需要 warmup（如纯 API 引擎）。
+    fn warmup_url(&self) -> Option<&str> {
+        None
+    }
+
     async fn search(&self, ctx: &EngineContext) -> SearchResult<Vec<RawResult>>;
 }

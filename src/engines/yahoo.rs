@@ -4,7 +4,7 @@
 //! 结构：`div.algo-sr`，title 在 `div.compTitle h3 a`，url 是 `/RU=<real>/RK...`
 
 use crate::engine::{Engine, EngineContext};
-use crate::engines::common::{extract_text, html_to_text};
+use crate::engines::common::{extract_text, html_to_text, parse_date_text};
 use crate::error::SearchResult;
 use crate::sel;
 use crate::types::RawResult;
@@ -19,6 +19,9 @@ pub struct Yahoo;
 impl Engine for Yahoo {
     fn id(&self) -> &'static str {
         "yahoo"
+    }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://search.yahoo.com/")
     }
 
     async fn search(&self, ctx: &EngineContext) -> SearchResult<Vec<RawResult>> {
@@ -40,6 +43,7 @@ impl Engine for Yahoo {
         let sel_link_a = sel!(r"div.compTitle h3 a");
         let sel_link_b = sel!(r"div.compTitle a");
         let sel_content = sel!(r"div.compText");
+        let sel_date = sel!(r"span.fc-smoke");
 
         let mut results = Vec::new();
         for item in doc.select(&sel_item) {
@@ -62,6 +66,10 @@ impl Engine for Yahoo {
                 .next()
                 .map(|e| extract_text(&e))
                 .unwrap_or_default();
+            let published_date = item
+                .select(&sel_date)
+                .next()
+                .and_then(|e| parse_date_text(&extract_text(&e)));
             let url_clean = parse_yahoo_url(raw_url);
 
             if title.is_empty() || url_clean.is_empty() {
@@ -71,6 +79,7 @@ impl Engine for Yahoo {
                 url: url_clean,
                 title,
                 content,
+                published_date,
                 ..RawResult::new("", "", "")
             });
         }

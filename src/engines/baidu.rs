@@ -37,6 +37,9 @@ impl Engine for Baidu {
     fn id(&self) -> &'static str {
         "baidu"
     }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.baidu.com/")
+    }
     fn is_china(&self) -> bool {
         true
     }

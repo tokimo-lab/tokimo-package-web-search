@@ -23,6 +23,9 @@ impl Engine for Google {
     fn id(&self) -> &'static str {
         "google"
     }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.google.com/")
+    }
 
     async fn search(&self, ctx: &EngineContext) -> SearchResult<Vec<RawResult>> {
         let start = (ctx.page.saturating_sub(1)) * 10;
@@ -32,15 +35,19 @@ impl Engine for Google {
             "https://www.google.com/search?q={q}&hl={hl}&ie=utf8&oe=utf8&filter=0&start={start}"
         );
 
+        // Google 现在纯 JS 渲染结果，HTTP 请求拿不到 a[data-ved]。
+        // 优先用 headless 浏览器；没有浏览器时走 HTTP 降级。
+        if let Some(browser) = &ctx.browser {
+            // 先访问首页拿 cookie，再搜索
+            let _ = browser.fetch_html("https://www.google.com/").await;
+            let html = browser.fetch_html(&url).await?;
+            check_google_captcha(&html)?;
+            return parse_google_html(&html);
+        }
+
         let resp = ctx
             .client
             .get(&url)
-            .header("Accept", "*/*")
-            .header(
-                "User-Agent",
-                "Mozilla/5.0 (Linux; Android 10; HUAWEI P30 Pro) AppleWebKit/537.36 \
-                 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 NSTNWV",
-            )
             .header("Cookie", "CONSENT=YES+")
             .send()
             .await?;
@@ -52,65 +59,81 @@ impl Engine for Google {
         }
 
         let html = resp.text().await?;
-        let doc = Html::parse_document(&html);
-
-        let mut results = Vec::new();
-        let sel_item = sel!("a[data-ved]:not([class])");
-        let sel_title = sel!("div[style]");
-        let sel_content = sel!(r#"div[class~="ilUpNd"][class~="H66NU"][class~="aSRlid"]"#);
-        // fallback content selectors (google 会频繁微调 class)
-        let sel_content_fb = sel!("div.VwiC3b, div.IsZvec, span.st");
-
-        for a in doc.select(&sel_item) {
-            let Some(href) = a.value().attr("href") else {
-                continue;
-            };
-
-            let title_el = a.select(&sel_title).next();
-            let title = match title_el {
-                Some(e) => extract_text(&e),
-                None => continue,
-            };
-            if title.is_empty() {
-                continue;
-            }
-
-            // /url?q=...&sa=U... → 还原
-            let url_clean = if let Some(stripped) = href.strip_prefix("/url?q=") {
-                let head = stripped.split("&sa=U").next().unwrap_or(stripped);
-                percent_decode_str(head).decode_utf8_lossy().into_owned()
-            } else if href.starts_with("http") {
-                href.to_string()
-            } else {
-                continue;
-            };
-
-            // content 要从 result 外层往上找
-            let content = a
-                .parent()
-                .and_then(|p| p.parent())
-                .and_then(scraper::ElementRef::wrap)
-                .map(|parent_el| {
-                    parent_el
-                        .select(&sel_content)
-                        .chain(parent_el.select(&sel_content_fb))
-                        .next()
-                        .map(|e| extract_text(&e))
-                        .unwrap_or_default()
-                })
-                .unwrap_or_default();
-
-            results.push(RawResult {
-                url: url_clean,
-                title,
-                content: collapse_whitespace(&content),
-                ..RawResult::new("", "", "")
-            });
+        check_google_captcha(&html)?;
+        let results = parse_google_html(&html).unwrap_or_default();
+        if results.is_empty() {
+            debug!(
+                engine = "google",
+                "HTTP returned 0 results (JS-rendered page)"
+            );
         }
-
-        debug!(engine = "google", count = results.len(), "parsed");
         Ok(results)
     }
+}
+
+fn parse_google_html(html: &str) -> SearchResult<Vec<RawResult>> {
+    let doc = Html::parse_document(html);
+    let mut results = Vec::new();
+
+    let sel_item = sel!("a[data-ved]:not([class])");
+    let sel_title = sel!("div[style]");
+    let sel_content = sel!(r#"div[class~="ilUpNd"][class~="H66NU"][class~="aSRlid"]"#);
+    let sel_content_fb = sel!("div.VwiC3b, div.IsZvec, span.st");
+
+    for a in doc.select(&sel_item) {
+        let Some(href) = a.value().attr("href") else {
+            continue;
+        };
+        let title_el = a.select(&sel_title).next();
+        let title = match title_el {
+            Some(e) => extract_text(&e),
+            None => continue,
+        };
+        if title.is_empty() {
+            continue;
+        }
+        let url_clean = if let Some(stripped) = href.strip_prefix("/url?q=") {
+            let head = stripped.split("&sa=U").next().unwrap_or(stripped);
+            percent_decode_str(head).decode_utf8_lossy().into_owned()
+        } else if href.starts_with("http") {
+            href.to_string()
+        } else {
+            continue;
+        };
+        let content = a
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(scraper::ElementRef::wrap)
+            .map(|parent_el| {
+                parent_el
+                    .select(&sel_content)
+                    .chain(parent_el.select(&sel_content_fb))
+                    .next()
+                    .map(|e| extract_text(&e))
+                    .unwrap_or_default()
+            })
+            .unwrap_or_default();
+        results.push(RawResult {
+            url: url_clean,
+            title,
+            content: collapse_whitespace(&content),
+            ..RawResult::new("", "", "")
+        });
+    }
+
+    debug!(engine = "google", count = results.len(), "parsed");
+    Ok(results)
+}
+
+/// 检测 Google CAPTCHA / "unusual traffic" 页面。
+fn check_google_captcha(html: &str) -> SearchResult<()> {
+    if html.contains("unusual traffic")
+        || html.contains("g-recaptcha")
+        || html.contains("captcha-form")
+    {
+        return Err(SearchError::Captcha("google"));
+    }
+    Ok(())
 }
 
 fn locale_to_hl(locale: &str) -> &str {

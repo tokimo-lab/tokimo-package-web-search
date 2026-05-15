@@ -4,6 +4,7 @@
 //! 无 token 时 30 req/min，有 token 时 5000 req/hr。
 
 use crate::engine::{Engine, EngineContext};
+use crate::engines::common::parse_date_text;
 use crate::error::{SearchError, SearchResult};
 use crate::types::RawResult;
 use async_trait::async_trait;
@@ -24,6 +25,8 @@ struct Item {
     description: Option<String>,
     stargazers_count: u64,
     language: Option<String>,
+    created_at: Option<String>,
+    pushed_at: Option<String>,
 }
 
 #[async_trait]
@@ -77,7 +80,18 @@ impl Engine for Github {
             if let Some(lang) = &r.language {
                 parts.push(format!("Language: {lang}"));
             }
-            out.push(RawResult::new(r.html_url, r.full_name, parts.join(" | ")));
+            let published_date = r
+                .pushed_at
+                .as_deref()
+                .or(r.created_at.as_deref())
+                .and_then(parse_date_text);
+            out.push(RawResult {
+                url: r.html_url,
+                title: r.full_name,
+                content: parts.join(" | "),
+                published_date,
+                ..RawResult::new("", "", "")
+            });
         }
 
         debug!(engine = "github", count = out.len(), "parsed");
@@ -98,14 +112,18 @@ mod tests {
                     "html_url": "https://github.com/tokushimo/tokimo",
                     "description": "A search library",
                     "stargazers_count": 42,
-                    "language": "Rust"
+                    "language": "Rust",
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "pushed_at": "2026-05-10T12:00:00Z"
                 },
                 {
                     "full_name": "example/repo",
                     "html_url": "https://github.com/example/repo",
                     "description": null,
                     "stargazers_count": 0,
-                    "language": null
+                    "language": null,
+                    "created_at": null,
+                    "pushed_at": null
                 }
             ]
         }"#;
@@ -125,6 +143,8 @@ mod tests {
             description: Some("A cool project".into()),
             stargazers_count: 100,
             language: Some("Rust".into()),
+            created_at: None,
+            pushed_at: None,
         };
         let mut parts = Vec::new();
         if let Some(desc) = &item.description
@@ -150,6 +170,8 @@ mod tests {
             description: None,
             stargazers_count: 5,
             language: Some("Python".into()),
+            created_at: None,
+            pushed_at: None,
         };
         let mut parts = Vec::new();
         if let Some(desc) = &item.description

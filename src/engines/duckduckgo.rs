@@ -21,6 +21,9 @@ impl Engine for DuckDuckGo {
     fn id(&self) -> &'static str {
         "duckduckgo"
     }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://duckduckgo.com/")
+    }
 
     async fn search(&self, ctx: &EngineContext) -> SearchResult<Vec<RawResult>> {
         let q = urlencoding::encode(&ctx.query);

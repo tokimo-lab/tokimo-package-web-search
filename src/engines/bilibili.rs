@@ -41,6 +41,9 @@ impl Engine for Bilibili {
     fn id(&self) -> &'static str {
         "bilibili"
     }
+    fn warmup_url(&self) -> Option<&str> {
+        Some("https://www.bilibili.com/")
+    }
     fn is_china(&self) -> bool {
         true
     }
