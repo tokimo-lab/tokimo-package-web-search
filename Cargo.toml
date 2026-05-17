@@ -64,7 +64,7 @@ tracing = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 base64 = "0.22"
 html-escape = "0.2"
-rand = "0.8"
+rand = "0.9"
 tokimo-web-fetch = { git = "https://github.com/tokimo-lab/tokimo-package-web-fetch", rev = "13bf0cc8b77d05289567f3bfdc7f0bbbc05fc2d6" }
 
 [dev-dependencies]

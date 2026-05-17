@@ -60,10 +60,10 @@ impl Engine for Bilibili {
 
         let buvid3 = {
             use std::fmt::Write;
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let mut hex = String::with_capacity(16);
             for _ in 0..16 {
-                write!(&mut hex, "{:X}", rng.gen_range(0..16)).expect("write to String");
+                write!(&mut hex, "{:X}", rng.random_range(0..16)).expect("write to String");
             }
             format!("{hex}infoc")
         };

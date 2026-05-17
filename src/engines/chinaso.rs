@@ -55,7 +55,7 @@ impl Engine for ChinaSo {
         let url = format!("https://www.chinaso.com/v5/general/v1/web/search?q={q}&pn={page}&ps=10");
 
         let mut bytes = [0u8; 16];
-        rand::thread_rng().fill_bytes(&mut bytes);
+        rand::rng().fill_bytes(&mut bytes);
         let uid = base64::engine::general_purpose::STANDARD.encode(bytes);
 
         let resp = ctx
