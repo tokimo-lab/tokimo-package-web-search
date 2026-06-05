@@ -2,7 +2,6 @@
 
 #![allow(clippy::print_stdout, clippy::unwrap_used)]
 
-use std::sync::Arc;
 use std::time::Duration;
 
 use tokimo_web_fetch::autodetect_browser;

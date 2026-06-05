@@ -77,7 +77,7 @@ async fn main() {
             )
             .unwrap(),
             Some(e) => {
-                writeln!(f, "  {:10}  {:>4}ms  FAIL  {}", s.engine, s.elapsed_ms, e).unwrap()
+                writeln!(f, "  {:10}  {:>4}ms  FAIL  {}", s.engine, s.elapsed_ms, e).unwrap();
             }
         }
     }
