@@ -8,6 +8,8 @@ use crate::engines::common::{extract_text, parse_date_text};
 use crate::error::{SearchError, SearchResult};
 use crate::sel;
 use crate::types::RawResult;
+use std::sync::LazyLock;
+
 use async_trait::async_trait;
 use regex::Regex;
 use scraper::Html;
@@ -48,7 +50,8 @@ impl Engine for Sogou {
         let sel_attr = sel!(r"div.attribute-centent, div.fz-mid.space-txt");
         let sel_date = sel!(r"span.cite-date, span.text-lightgray");
 
-        let re_data_url = Regex::new(r#"data-url="([^"]+)""#).unwrap();
+        static RE_DATA_URL: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r#"data-url="([^"]+)""#).expect("invalid regex pattern"));
 
         let mut results = Vec::new();
         for item in doc.select(&sel_items) {
@@ -67,7 +70,7 @@ impl Engine for Sogou {
             // /link?url=... 需要从 data-url 取真实 URL
             let href = if href_raw.starts_with("/link?url=") {
                 let item_html = item.html();
-                re_data_url
+                RE_DATA_URL
                     .captures(&item_html)
                     .and_then(|c| c.get(1))
                     .map_or_else(

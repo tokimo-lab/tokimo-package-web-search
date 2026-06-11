@@ -8,6 +8,8 @@ use crate::engines::common::html_to_text;
 use crate::error::{SearchError, SearchResult};
 use crate::sel;
 use crate::types::RawResult;
+use std::sync::LazyLock;
+
 use async_trait::async_trait;
 use regex::Regex;
 use scraper::Html;
@@ -44,8 +46,11 @@ impl Engine for Toutiao {
             .await?;
         let body = resp.text().await?;
 
-        let re = Regex::new(r"window\._SSR_DATA\s*=\s*(\{[^\n]+?\});?\s*</script>").unwrap();
-        let Some(cap) = re.captures(&body) else {
+        static RE_SSR_DATA: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new(r"window\._SSR_DATA\s*=\s*(\{[^\n]+?\});?\s*</script>")
+                .expect("invalid regex pattern")
+        });
+        let Some(cap) = RE_SSR_DATA.captures(&body) else {
             return Err(SearchError::AuthRequired("toutiao"));
         };
         let json = &cap[1];

@@ -86,13 +86,14 @@ pub fn parse_date_text(raw: &str) -> Option<DateTime<Utc>> {
 fn strip_prefix_noise(s: &str) -> String {
     static RE: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r"(?i)^(发帖时间|发贴时间|上传时间|发布时间|发布于|发表于|更新时间|published|posted|updated|created|date)[：:\s]*")
-            .unwrap()
+            .expect("invalid regex pattern")
     });
     RE.replace(s, "").into_owned()
 }
 
 fn strip_suffix_noise(s: &str) -> String {
-    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[\s\-—·|,，。]+$").unwrap());
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"[\s\-—·|,，。]+$").expect("invalid regex pattern"));
     RE.replace(s, "").into_owned()
 }
 
@@ -103,7 +104,7 @@ fn parse_iso(s: &str) -> Option<DateTime<Utc>> {
         Regex::new(
             r"(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:?\d{2})?",
         )
-        .unwrap()
+        .expect("invalid regex pattern")
     });
     if let Some(c) = RE.captures(s) {
         let y: i32 = c.get(1)?.as_str().parse().ok()?;
@@ -134,8 +135,9 @@ fn parse_iso(s: &str) -> Option<DateTime<Utc>> {
         return Some(ndt.and_utc());
     }
     // date-only: 2026-04-16 or 2026/04/16
-    static RE_DATE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$").unwrap());
+    static RE_DATE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$").expect("invalid regex pattern")
+    });
     if let Some(c) = RE_DATE.captures(s) {
         let y: i32 = c.get(1)?.as_str().parse().ok()?;
         let m: u32 = c.get(2)?.as_str().parse().ok()?;
@@ -185,10 +187,11 @@ fn parse_english_month(s: &str) -> Option<DateTime<Utc>> {
     // "Thu, 16 Apr 2026"
     static RE_MDY: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r"(?i)(?:[A-Za-z]{3},\s*)?([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})")
-            .unwrap()
+            .expect("invalid regex pattern")
     });
     static RE_DMY: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"(?i)(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+),?\s+(\d{4})").unwrap()
+        Regex::new(r"(?i)(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+),?\s+(\d{4})")
+            .expect("invalid regex pattern")
     });
 
     if let Some(c) = RE_MDY.captures(s) {
@@ -212,10 +215,12 @@ fn parse_english_month(s: &str) -> Option<DateTime<Utc>> {
 
 fn parse_chinese_date(s: &str) -> Option<DateTime<Utc>> {
     // "2026年4月16日" / "2026年04月16日"
-    static RE_FULL: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"(\d{4})年(\d{1,2})月(\d{1,2})日?").unwrap());
+    static RE_FULL: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(\d{4})年(\d{1,2})月(\d{1,2})日?").expect("invalid regex pattern")
+    });
     // "2026年4月" (no day) — match year+month, then check no digit follows 月
-    static RE_YM: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d{4})年(\d{1,2})月").unwrap());
+    static RE_YM: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(\d{4})年(\d{1,2})月").expect("invalid regex pattern"));
 
     if let Some(c) = RE_FULL.captures(s) {
         let y: i32 = c.get(1)?.as_str().parse().ok()?;
@@ -241,8 +246,9 @@ fn parse_chinese_date(s: &str) -> Option<DateTime<Utc>> {
 // ---- Ambiguous slash dates (MM/DD/YYYY) -----------------------------------
 
 fn parse_slash_date(s: &str) -> Option<DateTime<Utc>> {
-    static RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^(\d{1,2})/(\d{1,2})/(\d{4})$").unwrap());
+    static RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^(\d{1,2})/(\d{1,2})/(\d{4})$").expect("invalid regex pattern")
+    });
     if let Some(c) = RE.captures(s) {
         let a: u32 = c.get(1)?.as_str().parse().ok()?;
         let b: u32 = c.get(2)?.as_str().parse().ok()?;
@@ -258,8 +264,9 @@ fn parse_slash_date(s: &str) -> Option<DateTime<Utc>> {
 // ---- Relative: Chinese ----------------------------------------------------
 
 fn parse_relative_chinese(s: &str) -> Option<DateTime<Utc>> {
-    static RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"(\d+)\s*(秒|分钟|小时|天|周|星期|个?月|年)前").unwrap());
+    static RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(\d+)\s*(秒|分钟|小时|天|周|星期|个?月|年)前").expect("invalid regex pattern")
+    });
     let now = Utc::now();
     if let Some(c) = RE.captures(s) {
         let n: i64 = c.get(1)?.as_str().parse().ok()?;
@@ -279,7 +286,8 @@ fn parse_relative_chinese(s: &str) -> Option<DateTime<Utc>> {
 
 fn parse_relative_english(s: &str) -> Option<DateTime<Utc>> {
     static RE: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"(?i)(\d+|an?)\s*(second|minute|hour|day|week|month|year)s?\s*ago").unwrap()
+        Regex::new(r"(?i)(\d+|an?)\s*(second|minute|hour|day|week|month|year)s?\s*ago")
+            .expect("invalid regex pattern")
     });
     let now = Utc::now();
     if let Some(c) = RE.captures(s) {
